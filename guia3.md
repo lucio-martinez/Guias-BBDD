@@ -1,6 +1,6 @@
 Guía de Trabajos Prácticos N º 3
 ================================
-Funciones de agregado
+__Funciones de agregado__
 
 
 Con el modelo de Museo, resuelva las siguientes consignas:
