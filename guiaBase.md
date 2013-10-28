@@ -19,6 +19,9 @@ El gerente del área desea poder pedir, en cualquier momento, un listado con la 
 El sistema debe permitir, que el responsable de Recepción de reservas, consulte quienes fueron los guías (Código de guía, y Nombre de guía), que participaron en una reserva especifica, teniendo identificado cual fue el guía responsable por cada tipo de visita de la misma, ya que puede existir una queja de alguna escuela. 
 Además se desea poder realizar un mailing, con Nombre, Domicilio y Teléfono(s), de todas las escuelas que alguna vez realizaron una reserva.
 
+![graphic of the data_base][1]
+  [1]: http://i.imgur.com/PN9hgZG.jpg
+
 
  - Agregar al modelo, una tabla para Localidades.
  - Vincular la tabla Escuelas con la tabla Localidades, de manera que no pueda borrar una Localidad en la que hay Escuelas cargadas.
