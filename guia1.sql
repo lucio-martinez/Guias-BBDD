@@ -1,4 +1,4 @@
--- ASUNTO: Guia 4 BBDD
+-- ASUNTO: Guia 1 BBDD
 -- AUTOR: Lucio Martínez
 -- LICENSE: MIT license
 
