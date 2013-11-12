@@ -1,6 +1,6 @@
 -- ASUNTO: Guia 2 BBDD
 -- AUTOR: Lucio Martínez
--- LICENSE: MIT license
+-- LICENCIA: MIT license
 
 
 
@@ -81,6 +81,7 @@ INSERT INTO VisitasGuias (IdReserva, IdTipoVisita, IdGuia, Responsable)
     SELECT 2, 1, 1, 5 UNION ALL
     SELECT 1, 2, 3, 1 UNION ALL
     SELECT 3, 3, 1, 1 UNION ALL
+    SELECT 4, 3, 5, 2 UNION ALL
     SELECT 5, 3, 2, NULL;
 GO
 */
