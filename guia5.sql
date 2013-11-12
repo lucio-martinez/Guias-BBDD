@@ -1,6 +1,6 @@
 -- ASUNTO: Guia 5 BBDD
 -- AUTOR: Lucio Martínez
--- LICENSE: MIT license
+-- LICENCIA: MIT license
 
 
 -- EJ 1
@@ -9,12 +9,13 @@
 -- y obtener la cantidad de Reservas realizadas con una subconsulta.
 
 SELECT
-    e.IdEscuela,
-    Escuela,
-    (SELECT COUNT(IdEscuela)
-            FROM Reservas r
-            WHERE r.IdEscuela = e.IdEscuela) as Reservas
-    FROM Escuelas e;
+		e.IdEscuela,
+		Escuela,
+		[Cantidad Reservas] = 
+			(SELECT COUNT(*)
+				FROM Reservas r
+					WHERE r.IdEscuela = e.IdEscuela)
+	FROM Escuelas e
 
 
 
@@ -24,17 +25,16 @@ SELECT
 -- y obtener la cantidad de Reservas realizadas durante el presente año,
 -- con una subconsuta. En caso de no haber realizado Reservas, mostrar el número cero.
 
--- DUDA: mostrar 0 si no hubo reservas en el año ó Nunca??
 
--- Muestra 0 si no hubo reservas en el año
 SELECT
-    e.IdEscuela,
-    Escuela,
-    (SELECT COUNT(r.IdEscuela)
-        FROM Reservas r
-        WHERE r.IdEscuela = e.IdEscuela AND
-            YEAR(Fecha) = YEAR(GETDATE())) AS Reservas
-    FROM Escuelas e;
+		e.IdEscuela,
+		Escuela,
+		[Cantidad Reservas] = 
+			(SELECT COUNT(*)
+				FROM Reservas r
+					WHERE r.IdEscuela = e.IdEscuela
+						AND YEAR(Fecha) = YEAR(GETDATE()))
+	FROM Escuelas e
 
 
 
@@ -44,6 +44,17 @@ SELECT
 -- Para cada Tipo de Visita, listar el nombre y obtener con una subconsulta
 -- como tabla derivada la cantidad de Reservas realizadas.
 
+-- Linea x linea
+SELECT
+		TipoVisita,
+		[Cantidad Reservas] = 
+			COUNT(*)
+	FROM TipoVisitas t
+		INNER JOIN (SELECT IdTipoVisita FROM Visitas) v
+			ON v.IdTipoVisita = t.IdTipoVisita
+	GROUP BY TipoVisita
+
+-- Usando grupos
 SELECT
     t.IdTipoVisita,
     TipoVisita,
@@ -63,14 +74,13 @@ SELECT
 -- En caso de no haber participado en ninguna, mostrar el número cero.
 
 SELECT
-    --g.IdGuia,
-    Guia,
-    ISNULL(Visitas, 0) AS 'Visitas Responsable'
-    FROM Guias g
-    LEFT JOIN (SELECT Responsable, COUNT(IdReserva) AS Visitas
-                    FROM VisitasGuias
-                    GROUP BY Responsable) Visitas
-        ON Visitas.Responsable = g.IdGuia;
+		Guia,
+		[Cantidad Visitas Responsable] = 
+			COUNT(Responsable)
+	FROM Guias g
+		LEFT JOIN (SELECT Responsable FROM VisitasGuias) v 
+					ON v.Responsable = g.IdGuia
+	GROUP BY Guia
 
 
 
@@ -80,31 +90,17 @@ SELECT
 -- realizadas el último año que visitaron el Museo.
 -- Resolver con subconsulta correlacionada.
 
--- Teniendo en cuenta la fecha de la Reserva, sin importar la visita
 SELECT
-    --e.IdEscuela,
-    Escuela,
-    COUNT (r.IdReserva) AS Reservas
-    FROM Escuelas e
-        INNER JOIN Reservas r
-            ON e.IdEscuela = r.IdEscuela
-    WHERE YEAR(r.Fecha) = (SELECT MAX(YEAR(Fecha)) -- Año más reciente
-                        FROM Reservas r2
-                        WHERE r2.IdEscuela = e.IdEscuela)
-    GROUP BY e.IdEscuela, Escuela;
-
--- Teniendo en cuenta la fecha de la Visita
-SELECT
-    e.IdEscuela,
-    Escuela,
-    COUNT (r.IdReserva) AS Reservas
-    FROM Escuelas e
-        INNER JOIN Reservas r
-            ON e.IdEscuela = r.IdEscuela
-    WHERE YEAR(r.Fecha) = (SELECT MAX(YEAR(Fecha)) -- Año más reciente
-                            FROM Reservas r
-                                JOIN Visitas v ON v.IdReserva = r.IdReserva)
-    GROUP BY e.IdEscuela, Escuela;
+		Escuela,
+		[Reservas Ultimo Año] = 
+			--COUNT(r.IdReserva)
+			COUNT(*) 
+	FROM Escuelas e
+		INNER JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+	WHERE YEAR(Fecha) = (SELECT MIN(YEAR(Fecha))
+							FROM Reservas r2
+								WHERE r2.IdEscuela = e.IdEscuela)
+	GROUP BY Escuela
 
 
 
@@ -114,7 +110,7 @@ SELECT
 -- Resolver con Exists.
 
 SELECT
-    Escuela
+        Escuela
     FROM Escuelas e
     WHERE EXISTS(SELECT DISTINCT r.IdEscuela
                     FROM Reservas r
@@ -127,10 +123,21 @@ SELECT
 -- Listar el nombre de las Escuelas que realizaron Reservas.
 -- Resolver con IN.
 
+-- Forma recomendada?:
 SELECT
-    Escuela
-    FROM Escuelas e
-    WHERE e.IdEscuela IN (SELECT r.IdEscuela FROM Reservas r);
+		IdEscuela,
+		Escuela
+	FROM Escuelas e
+	WHERE e.IdEscuela IN(SELECT DISTINCT IdEscuela
+							FROM Reservas r
+							WHERE r.IdEscuela = e.IdEscuela)
+-- Forma + Rapida?:
+SELECT
+		IdEscuela,
+		Escuela
+	FROM Escuelas e
+	WHERE e.IdEscuela IN(SELECT IdEscuela
+							FROM Reservas r)
 
 
 
@@ -150,12 +157,15 @@ SELECT
 -- y obtener la cantidad de Reservas realizadas.
 
 SELECT
-    e.IdEscuela,
-    Escuela,
-    ISNULL(COUNT(r.IdEscuela), 0) AS Reservas
-    FROM Escuelas e
-        LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
-    GROUP BY e.IdEscuela, Escuela;
+		e.IdEscuela,
+		Escuela,
+		[Cantidad Reservas] = 
+			COUNT(r.IdEscuela)
+	FROM Escuelas e
+	    -- Utilizar la segunda unión para obtener CEROS
+		INNER JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+		--LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+	GROUP BY e.IdEscuela, Escuela
 
 
 
@@ -165,29 +175,17 @@ SELECT
 -- y obtener la cantidad de Reservas realizadas durante el presente año.
 -- En caso de no haber realizado Reservas, mostrar el número cero.
 
--- DUDA: mostrar 0 si no hubo reservas en el año ó Nunca??
-
--- Muestra 0 si no hubo reservas en el año
 SELECT
-    e.IdEscuela,
-    Escuela,
-    COUNT(r.IdEscuela) AS Reservas
-    FROM Escuelas e
-        LEFT JOIN Reservas r
-            ON r.IdEscuela = e.IdEscuela
-                AND YEAR(Fecha) = YEAR(GETDATE())
-    GROUP BY e.IdEscuela, Escuela;
-
--- NO muestra las escuelas sin reservas en ese año
-SELECT
-    e.IdEscuela,
-    Escuela,
-    COUNT(r.IdEscuela) AS Reservas
-    FROM Escuelas e
-        LEFT JOIN Reservas r
-            ON r.IdEscuela = e.IdEscuela
-    WHERE YEAR(Fecha) = YEAR(GETDATE())
-    GROUP BY e.IdEscuela, Escuela;
+		e.IdEscuela,
+		Escuela,
+		[Cantidad Reservas] = 
+			COUNT(r.IdEscuela)
+	FROM Escuelas e
+		LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+								AND YEAR(Fecha) = YEAR(GETDATE())
+	-- Quitar la sentencia AND y usar WHERE para obtener CEROS
+	-- WHERE YEAR(Fecha) = YEAR(GETDATE())
+	GROUP BY e.IdEscuela, Escuela
 
 
 
