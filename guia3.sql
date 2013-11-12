@@ -1,6 +1,6 @@
 -- ASUNTO: Guia 3 BBDD
 -- AUTOR: Lucio Martínez
--- LICENSE: MIT license
+-- LICENCIA: MIT license
 
 
 
@@ -9,14 +9,15 @@
 -- Listar la cantidad de Reservas realizadas para cada Escuela,
 -- ordenar el resultado por identificador de Escuela
 
-SELECT
-    r.IdEscuela,
-    e.Escuela,
-    COUNT(*) AS 'Reservas'
-    FROM Reservas r
-        JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-    GROUP BY r.IdEscuela, e.Escuela
-    ORDER BY r.IdEscuela;
+SELECT 
+		e.IdEscuela,
+		[Cantidad Reservas] = 
+			--SUM(CASE e.IdEscuela WHEN r.IdEscuela THEN 1 ELSE 0 END)
+			COUNT(r.IdEscuela)
+	FROM Escuelas e
+		LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+	GROUP BY e.IdEscuela
+	ORDER BY e.IdEscuela;
 
 
 
@@ -26,14 +27,19 @@ SELECT
 -- para cada Escuela, en cada mes
 
 SELECT
-    r.IdEscuela,
-    e.Escuela,
-    MONTH(Fecha) as 'Numero del Mes',
-    COUNT(*) AS 'Reservas'
-    FROM Reservas r
-        JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-    GROUP BY r.IdEscuela, MONTH(Fecha), e.Escuela
-    ORDER BY IdEscuela;
+    e.IdEscuela,
+    Escuela,
+	[Numero del Mes] =
+		CASE
+			WHEN MONTH(Fecha) IS NULL THEN 0 ELSE MONTH(Fecha)
+		END,
+	[Cantidad Reservas] = 
+		--SUM(CASE e.IdEscuela WHEN r.IdEscuela THEN 1 ELSE 0 END)
+		COUNT(r.IdEscuela)
+    FROM Escuelas e
+		LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+    GROUP BY e.IdEscuela, MONTH(Fecha), Escuela
+    ORDER BY e.IdEscuela;
 
 
 
@@ -43,13 +49,13 @@ SELECT
 -- para los que se reservó y la cantidad total de Alumnos
 -- que concurrieron en realidad.
 
-SELECT
-    r.IdReserva,
-    CantidadAlumnos,
-    CantidadRealAlumnos
-    FROM Reservas r
-        JOIN Visitas v ON r.IdReserva = v.IdReserva
-    GROUP BY r.IdReserva, CantidadAlumnos, CantidadRealAlumnos;
+SELECT 
+		r.IdReserva,
+		[Cantidad Total Alumnos] = SUM(CantidadAlumnos),
+		[Cantidad Total Real Alumnos] = SUM(CantidadRealAlumnos)
+	FROM Reservas r
+		INNER JOIN Visitas v ON v.IdReserva = r.IdReserva
+	GROUP BY r.IdReserva
 
 
 
@@ -59,14 +65,13 @@ SELECT
 -- ordenar el resultado por identificador de Escuela en forma descendente.
 
 SELECT
-    r.IdEscuela,
-    e.Escuela,
-    CONVERT(varchar(10), MIN( Fecha ), 120) AS 'Fecha de Primer Reserva',
-    CONVERT(varchar(10), MAX( Fecha ), 120) AS 'Fecha de Última Reserva'
-    FROM Reservas r
-        JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-    GROUP BY r.IdEscuela, Escuela
-    ORDER BY IdEscuela DESC;
+		e.IdEscuela,
+		[Primer Reserva] = MIN(Fecha),
+		[Última Reserva] = MAX(Fecha)
+	FROM [Escuelas] e
+		INNER JOIN [Reservas] r ON r.IdEscuela = e.IdEscuela
+	GROUP BY e.IdEscuela
+	ORDER BY e.IdEscuela Desc
 
 
 
@@ -75,12 +80,13 @@ SELECT
 -- Listar para cada Guía, la cantidad de reservas en las que participó.
 
 SELECT
-    v.IdGuia,
-    g.Guia,
-    COUNT(IdReserva) AS Reservas
-    FROM VisitasGuias v
-        JOIN Guias g ON v.IdGuia = g.IdGuia
-    GROUP BY v.IdGuia, g.Guia;
+		g.IdGuia,
+		[Reservas] = 
+			--SUM(CASE g.IdGuia WHEN v.IdGuia THEN 1 ELSE 0 END)
+			COUNT(v.IdGuia)
+	FROM [Guias] g
+		LEFT JOIN [VisitasGuias] v ON v.IdGuia = g.IdGuia
+	GROUP BY g.IdGuia
 
 
 
@@ -90,13 +96,14 @@ SELECT
 -- de día completo en las que participó.
 
 SELECT
-    v.IdGuia,
-    g.Guia,
-    COUNT(IdReserva) AS Reservas
-    FROM VisitasGuias v
-        JOIN Guias g ON v.IdGuia = g.IdGuia
-    WHERE IdTipoVisita = 1
-    GROUP BY v.IdGuia, g.Guia;
+		g.IdGuia,
+		[Reservas] = 
+			--SUM(CASE g.IdGuia WHEN v.IdGuia THEN 1 ELSE 0 END)
+			COUNT(v.IdGuia)
+	FROM [Guias] g
+		LEFT JOIN [VisitasGuias] v ON v.IdGuia = g.IdGuia 
+									AND IdTipoVisita = 1
+	GROUP BY g.IdGuia
 
 
 
@@ -106,14 +113,14 @@ SELECT
 -- en las que participó, cuando haya superado las 5 participaciones.
 
 SELECT
-    v.IdGuia,
-    g.Guia,
-    COUNT(IdReserva) AS Reservas
-    FROM VisitasGuias v
-        JOIN Guias g ON v.IdGuia = g.IdGuia
-    WHERE IdTipoVisita = 1
-    GROUP BY v.IdGuia, g.Guia
-    HAVING COUNT(IdReserva) > 5; -- Cambiar a un numero menor para probar
+		g.IdGuia,
+		[Reservas] = 
+			COUNT(v.IdGuia)
+	FROM [Guias] g
+		LEFT JOIN [VisitasGuias] v ON v.IdGuia = g.IdGuia 
+									AND IdTipoVisita = 1
+	GROUP BY g.IdGuia
+	HAVING COUNT(v.IdGuia) > 1
 
 
 
@@ -122,13 +129,12 @@ SELECT
 -- Listar el Guía que haya participado en mayor cantidad de reservas.
 
 SELECT TOP 1
-    v.IdGuia,
-    g.Guia,
-    COUNT(IdReserva) AS Reservas
-    FROM VisitasGuias v
-        JOIN Guias g ON v.IdGuia = g.IdGuia
-    GROUP BY v.IdGuia, g.Guia
-    ORDER BY COUNT(IdReserva) DESC;
+		g.IdGuia
+		--[Cantidad Reservas] = COUNT(*)
+	FROM Guias g
+		INNER JOIN [VisitasGuias] v ON v.IdGuia = g.IdGuia
+	GROUP BY g.IdGuia
+	ORDER BY COUNT(*) DESC;
 
 
 
@@ -138,10 +144,9 @@ SELECT TOP 1
 -- Tener en cuenta que las Escuelas pueden realizar más de una reserva mensual.
 
 SELECT
-    r.IdEscuela,
-    e.Escuela,
-    COUNT(IdReserva) AS 'Reservas en Agosto'
-    FROM Reservas r
-        JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-    WHERE MONTH(Fecha) = 8
-    GROUP BY r.IdEscuela, e.Escuela;
+		e.IdEscuela,
+		Escuela
+	FROM Reservas r
+		INNER JOIN Escuelas e ON e.IdEscuela = r.IdEscuela
+	WHERE YEAR(Fecha) = 2012 AND MONTH(Fecha) = 8 
+	GROUP BY e.IdEscuela, Escuela
