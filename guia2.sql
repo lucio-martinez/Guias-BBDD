@@ -19,10 +19,9 @@ SELECT *
 -- Mostrar Reservas ordenadas por Fecha y Escuela.
 
 SELECT
-    IdReserva, Escuela, Fecha
+        IdReserva, Escuela, Fecha
     FROM Reservas r
-    INNER JOIN Escuelas e
-        ON r.IdEscuela = e.IdEscuela
+        INNER JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
     ORDER BY Fecha, e.Escuela;
 
 
@@ -32,7 +31,8 @@ SELECT
 -- Mostrar Visitas por Tipo y Cantidad de Alumnos descendente
 
 SELECT
-    IdReserva, Grado, CantidadAlumnos, CantidadRealAlumnos, v.Arancel, TipoVisita
+        IdReserva, Grado, CantidadAlumnos, 
+        CantidadRealAlumnos, v.Arancel, TipoVisita
     FROM Visitas v
         JOIN TipoVisitas t ON v.IdTipoVisita = t.IdTipoVisita
     ORDER BY t.TipoVisita ASC, v.CantidadAlumnos;
@@ -43,16 +43,16 @@ SELECT
 
 -- Idem previo y '-' si Alumnos Reales es menor que Alumnos
 
-SELECT
-    IdReserva,
-    t.IdTipoVisita,
-    CantidadAlumnos,
-    CASE WHEN CantidadRealAlumnos < CantidadAlumnos
-        THEN '-'
-        ELSE '='
-    END AS 'Cantidad Real'
-    FROM Visitas v
-        JOIN TipoVisitas t ON v.IdTipoVisita = t.IdTipoVisita;
+SELECT 
+		IdReserva,
+		IdTipoVisita,
+		CantidadAlumnos, 
+		[Expression] = 
+			CASE CantidadRealAlumnos 
+				WHEN CantidadAlumnos THEN '=' ELSE '-'
+			END
+	FROM Visitas
+	ORDER BY IdTipoVisita Asc, CantidadAlumnos Desc;
 
 
 
@@ -60,16 +60,15 @@ SELECT
 
 -- Mostrar Reservas y 'Año Actual' o 'Año Proximo' segun la Fecha
 
-SELECT
-    IdReserva,
-    IdEscuela,
-    CASE
-        -- WHEN YEAR(Fecha) = YEAR(GetDate())-1 THEN 'Año Previo'
-        WHEN YEAR(Fecha) = YEAR(GetDate()) THEN 'Año Actual'
-        WHEN YEAR(Fecha) = YEAR(GetDate())+1 THEN 'Año Proximo'
-        ELSE CONVERT(varchar, Fecha)
-    END AS Año
-    FROM Reservas;
+SELECT 
+		[IdReserva],
+		[IdEscuela],
+		[Fecha] = 
+			CASE YEAR(Fecha)
+				WHEN YEAR(GETDATE())-1 THEN 'Año Pasado'
+				WHEN YEAR(GETDATE())   THEN 'Año Actual'
+			END
+	FROM [Reservas] as r
 
 
 
@@ -88,14 +87,13 @@ GO
 -- Mostrar Visitas, si no hay Responsable mostrar 'Sin Datos'
 
 SELECT
-    Visitas.IdReserva,
-    Visitas.IdTipoVisita,
-    IdGuia,
-    CASE
-        WHEN Responsable IS NULL THEN 'Sin Datos'
-        ELSE CONVERT(varchar, Responsable)
-    END AS Responsable
-    FROM Visitas
-        JOIN VisitasGuias guias ON Visitas.IdReserva = guias.IdReserva;
-
-
+		v.[IdReserva],
+		v.[IdTipoVisita],
+		vg.[IdGuia],
+		Responsable = 
+			CASE
+				WHEN Responsable IS NULL THEN 'Sin Datos' ELSE g.Guia
+			END
+	FROM [Visitas] v
+		INNER JOIN [VisitasGuias] vg ON vg.IdReserva = v.IdReserva
+		LEFT JOIN [Guias] g ON g.IdGuia = vg.Responsable;
