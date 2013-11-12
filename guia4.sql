@@ -1,6 +1,6 @@
 -- ASUNTO: Guia 4 BBDD
 -- AUTOR: Lucio Martínez
--- LICENSE: MIT license
+-- LICENCIA: MIT license
 
 
 
@@ -9,8 +9,8 @@
 -- Listar nombre y teléfonos de cada escuela.
 
 SELECT
-    Escuela,
-    Telefono
+        Escuela,
+        Telefono
     FROM EscuelasTelefonos t
         JOIN Escuelas e ON t.IdEscuela = e.IdEscuela;
 
@@ -22,11 +22,11 @@ SELECT
 -- para cada Escuela durante el presente año.
 
 SELECT
-    Escuela,
-    COUNT(IdReserva) AS Reservas
+        Escuela,
+        [Reservas] = COUNT(IdReserva)
     FROM Reservas r
         JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-    WHERE YEAR(Fecha) = YEAR(GetDate())
+    WHERE YEAR(Fecha) = YEAR(GETDATE())
     GROUP BY Escuela;
 
 
@@ -36,15 +36,16 @@ SELECT
 -- Listar Nombre y cantidad de Reservas realizadas para cada Escuela durante el presente año,
 -- en caso de no haber realizado Reservas mostrar el número cero.
 
+
 SELECT
-    Escuela,
-    COUNT(IdReserva) AS Reservas
-    FROM Escuelas e
-        LEFT JOIN Reservas r ON r.IdEscuela = e.IdEscuela
-    WHERE
-        YEAR(Fecha) = YEAR(GetDate())
-        OR YEAR(Fecha) IS NULL -- Quitar esta linea para no mostrar ceros
-    GROUP BY Escuela;
+		Escuela,
+		[Reservas Actual Año] = 
+			COUNT(r.IdEscuela)
+	FROM [Escuelas] e
+		LEFT JOIN [Reservas] r ON r.IdEscuela = e.IdEscuela
+								AND YEAR(Fecha) = YEAR(GETDATE())
+	GROUP BY Escuela
+	ORDER BY Escuela DESC;
 
 
 -- EJ 4
@@ -52,38 +53,26 @@ SELECT
 -- Listar el nombre de los Guías que participaron en las Visitas,
 -- pero no como Responsable.
 
-
+-- Retorna Guias que estuvieron en visitas pero *nunca* Responsables
+SELECT
+		g.IdGuia,
+		Guia
+	FROM Guias g
+		INNER JOIN VisitasGuias v ON v.IdGuia = g.IdGuia
+	WHERE g.IdGuia NOT IN(SELECT DISTINCT v2.IdGuia
+								FROM VisitasGuias v2
+								WHERE v2.Responsable = g.IdGuia)
+	GROUP BY g.IdGuia, Guia 
+	
 -- Retorna guias que tuvieron visitas pero no estuvieron responsables en *alguna* guia
 /*
 SELECT
-    g.IdGuia,
-    Guia
+        g.IdGuia,
+        Guia
     FROM Guias g
-    JOIN VisitasGuias v
-        ON g.IdGuia = v.IdGuia
+        JOIN VisitasGuias v ON g.IdGuia = v.IdGuia
     WHERE Responsable != g.IdGuia
-        --AND (Responsable != g.IdGuia
         OR Responsable IS NULL;
-*/
--- Retorna Guias que estuvieron en visitas pero *nunca* Responsables
-
---TODO: hacerlo andar en caso de NULL
-/*
-SELECT
-    g.IdGuia,
-    Guia
-    FROM Guias g
-    JOIN VisitasGuias v
-        ON g.IdGuia = v.IdGuia
-            AND (Responsable IS NULL OR g.IdGuia != Responsable)
-    WHERE
-        g.IdGuia NOT IN (
-                        --ISNULL((
-                            SELECT Responsable
-                                FROM VisitasGuias
-                                WHERE Responsable IS NOT NULL)
-                            --, g.IdGuia+1))
-;
 */
 
 
@@ -92,16 +81,16 @@ SELECT
 -- Listar el nombre de los Guías que no participaron de ninguna Visita.
 
 SELECT
-    IdGuia,
-    Guia
-    FROM Guias g
-    -- Activate this first query if you want to get Responsables case
-    --WHERE IdGuia NOT IN (SELECT IdGuia FROM VisitasGuias);
-    -- Activate this second query if you DO NOT want to get Responsables case
-    WHERE NOT EXISTS (SELECT DISTINCT IdGuia, Responsable
-                        FROM VisitasGuias v
-                        WHERE g.IdGuia = v.IdGuia OR
-                            g.IdGuia = Responsable);
+		g.IdGuia
+	FROM Guias g
+		LEFT JOIN VisitasGuias v ON v.IdGuia = g.IdGuia
+									-- Comenta la siguiente linea para
+									-- obtener los guías que hallan estado 
+									-- como Responsables *al menos una vez*.
+									OR Responsable = g.IdGuia
+	WHERE v.IdGuia IS NULL -- Obtiene los guías que no estuvieron
+	GROUP BY g.IdGuia
+	ORDER BY g.IdGuia
 
 
 
@@ -112,18 +101,15 @@ SELECT
 -- NOTA: no muestra reservas sin visitas!! (bien?)
 
 SELECT
-    --r.IdReserva,
-    --e.IdEscuela,
-    Escuela,
-    --g.IdGuia,
-    Guia,
-    CantidadRealAlumnos,
-    Fecha
-    FROM Visitas v
-        JOIN VisitasGuias vg ON v.IdReserva = vg.IdReserva
-        JOIN Reservas r ON v.IdReserva = r.IdReserva
-        JOIN Escuelas e ON r.IdEscuela = e.IdEscuela
-        JOIN Guias g ON vg.IdGuia = g.IdGuia;
+		Escuela,
+		Guia,
+		CantidadRealAlumnos,
+		Fecha
+	FROM Visitas v
+		INNER JOIN Reservas r      ON  r.IdReserva =  v.IdReserva
+		INNER JOIN VisitasGuias vg ON vg.IdReserva =  r.IdReserva
+		INNER JOIN Guias g         ON  g.IdGuia    = vg.IdGuia
+		INNER JOIN Escuelas e      ON  e.IdEscuela =  r.IdEscuela
 
 
 
@@ -134,39 +120,13 @@ SELECT
 -- indicando Sin Escuelas. Algunas Escuelas no tienen cargada la Localidad,
 -- debe indicar Sin Localidad.
 
--- NOTA: los siguientes 2 queries logran el objectivo si se unen en 1 tabla temporal,
--- TODO: usar UNION ALL para hacerlo andar en 1 query ;)
-
--- Muestra Escuelas y su localidad, Sin Localidad si no tiene
 SELECT
-    Escuela,
-    ISNULL(Localidad, 'Sin Localidad') AS Localidad
-/*
-    CASE
-        WHEN e.IdLocalidad IS NULL THEN 'Sin Localidad'
-        ELSE Localidad
-    END AS Localidad
-*/
-    FROM Escuelas e
-        LEFT JOIN Localidades l ON e.IdLocalidad = l.IdLocalidad
-    ORDER BY Escuela DESC;
-
--- Muestra todas las Localidades y su(s) escuela(s),
--- si hay CERO escuelas en la localidad muestra 'Sin Escuela'
-SELECT
-    Localidad,
-    ISNULL(Escuela, 'Sin Escuela') AS Escuela
-    -- Use the previous ISNULL function is the same
-    -- that using this sub-query:
-    /*
-    ISNULL((SELECT TOP 1 Escuela
-                FROM Escuelas e2
-                WHERE e2.IdLocalidad = l.IdLocalidad AND
-                    e2.IdEscuela = e.IdEscuela), 'Sin Escuela') AS Escuelas
-    */
-    FROM Localidades l
-        LEFT JOIN Escuelas e ON l.IdLocalidad = e.IdLocalidad
-    ORDER BY Localidad;
+		[Escuelas] =
+			ISNULL(Escuela, 'Sin Escuelas'),
+		[Localidades] =
+			ISNULL(Localidad, 'Sin Localidad')
+	FROM Escuelas e
+		FULL JOIN Localidades l ON l.IdLocalidad = e.IdLocalidad
 
 
 
@@ -201,15 +161,13 @@ SELECT
 -- y el de todos los Guías, juntos, ordenados alfabéticamente.
 
 SELECT
-    Guia AS Persona
-    FROM Guias
-    UNION ALL
-        SELECT Director AS Persona
-            FROM Escuelas e
-                INNER JOIN Localidades l ON e.IdLocalidad = l.IdLocalidad
-            --WHERE l.IdLocalidad = 1000
-            WHERE Localidad = 'Mar del Plata'
-    ORDER BY Persona;
+	[Persona] = Director
+	FROM Escuelas 
+	WHERE IdLocalidad = 1000 UNION ALL -- Localidad '1000' es Mar del Plata
+		SELECT 
+			[Persona] = Guia
+			FROM Guias
+	ORDER BY Persona
 
 
 
@@ -231,10 +189,8 @@ UPDATE Escuelas
 */
 
 SELECT
-    Escuela,
-    ISNULL(Localidad, 'Sin Localidad') AS Localidad
-    FROM Escuelas e
-        LEFT JOIN Localidades l ON e.IdLocalidad = l.IdLocalidad
-    WHERE EXISTS(SELECT DISTINCT r.IdEscuela
-                    FROM Reservas r
-                    WHERE r.IdEscuela = e.IdEscuela);
+		Escuela,
+		[Localidad] = ISNULL(Localidad, 'Sin localidad')
+	FROM Escuelas e
+		INNER JOIN Reservas r ON r.IdEscuela = e.IdEscuela
+		LEFT JOIN Localidades l ON l.IdLocalidad = e.IdLocalidad
